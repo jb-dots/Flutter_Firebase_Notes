@@ -1,10 +1,12 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_crudnote/auth_service.dart';
 import 'package:firebase_crudnote/crud_service.dart';
 import 'package:flutter/material.dart';
 
 class HomePage extends StatelessWidget {
     final CrudService service = CrudService();
+    final AuthService authService = AuthService();
     final TextEditingController nameCtrl = TextEditingController();
     final TextEditingController qtyCtrl = TextEditingController();
     HomePage({super.key});
@@ -17,6 +19,12 @@ class HomePage extends StatelessWidget {
             title: const Text('Firebase Dutaro'),
             centerTitle: true,
             backgroundColor: Colors.teal,
+            actions: [
+                IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    onPressed: () => _confirmLogout(context),
+                ),
+            ],
         ),
         floatingActionButton: FloatingActionButton(
             backgroundColor: Colors.teal,
@@ -70,6 +78,37 @@ class HomePage extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+// LOGOUT UI
+
+  void _confirmLogout(BuildContext context){
+    showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+            title: const Text("Logout"),
+            content: const Text("Are you sure you want to logout?"),
+            actions: [
+                TextButton(
+                    child: const Text("Cancel"),
+                    onPressed: () => Navigator.pop(context),
+                ),
+                ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text("Logout", style: TextStyle(color: Colors.white)),
+                    onPressed: () async {
+                        await authService.signOut();
+                        if (context.mounted) {
+                            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                        }
+                    },
+                )
+            ],
+        )
     );
   }
 
