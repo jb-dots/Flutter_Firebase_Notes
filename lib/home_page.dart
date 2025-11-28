@@ -1,4 +1,6 @@
 
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_crudnote/auth_service.dart';
 import 'package:firebase_crudnote/crud_service.dart';
@@ -46,17 +48,33 @@ class HomePage extends StatelessWidget {
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
                     var item = docs[index];
+
+                    final data = item.data() as Map<String, dynamic>;
+                    final imageUrl = data['imageUrl'];
+
                     return Card(
                         elevation: 3,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            
+                            leading: imageUrl != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                    imageUrl,
+                                    width: 50,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                ),
+                            )
+                            : null,
                             title: Text(
-                                item['name'],
+                                data['name'] ?? '',
                                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
-                            subtitle: Text("Quantity ${item['quantity']}",
+                            subtitle: Text("Quantity ${data['quantity'] ?? 0 }",
                             style: const TextStyle(fontSize: 14, color: Colors.grey),
                             ),
                             trailing: Row(
@@ -127,7 +145,11 @@ class HomePage extends StatelessWidget {
                         service.deleteItem(id);
                         Navigator.pop(context);
                     },
-                )
+                ),
+                TextButton(
+                  child: const Text("Cancel"),
+                  onPressed: () => Navigator.pop(context),
+                ),
             ],
         )
     );
@@ -139,9 +161,15 @@ class HomePage extends StatelessWidget {
     nameCtrl.clear();
     qtyCtrl.clear();
 
+    File? selectedImageFile;
+    String? selectedImageUrl;
+
+
     showDialog(
         context: context,
-        builder: (_) => AlertDialog(
+        builder: (_) => StatefulBuilder(
+          builder:(context, setState) => 
+        AlertDialog(
             title: const Text("Add item"),
             content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -160,7 +188,34 @@ class HomePage extends StatelessWidget {
                             labelText: "Quantity",
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                         ),
+                        keyboardType: TextInputType.number,
                     ),
+                    const SizedBox(height: 10),
+                    if (selectedImageFile != null)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          selectedImageFile!,
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.upload_file),
+                          label: const Text('upload Image'),
+                          onPressed: () async {
+                            final PickedFile = await service.pickImageForAddItem();
+                            if (PickedFile != null) {
+                              setState((){
+                                selectedImageFile = PickedFile.file;
+                                selectedImageUrl = PickedFile.url;
+                              });
+                            }
+                          },
+                      ),
+
                 ],
             ),
             actions: [
@@ -174,16 +229,20 @@ class HomePage extends StatelessWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     child: const Text("Save"),
-                    onPressed: () {
+                    onPressed: () async {
                         if(nameCtrl.text.isNotEmpty && qtyCtrl.text.isNotEmpty){
-                            service.addItem(nameCtrl.text, int.parse(qtyCtrl.text));
-                            Navigator.pop(context);
+                          await service.addItemWithImage(
+                            nameCtrl.text,
+                            int.parse(qtyCtrl.text),
+                            selectedImageUrl,
+                          );
               }
             },
           ),
         ],
-      )
-    );
+      ),
+    ),
+   );
   }
 
 //EDIT UI
